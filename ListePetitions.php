@@ -97,7 +97,7 @@ $petitions = $petitions->fetchAll();
 
 <body>
 <div class="top">
-    <strong>Pétition la plus signée (en temps réel) :</strong>
+    <strong>Pétition la plus signée :</strong>
     <span id="topPetition">Chargement...</span>
     <button onclick="location.href='AjouterPetition.php'">Ajouter une pétition</button>
 </div>

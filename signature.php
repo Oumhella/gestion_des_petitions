@@ -87,7 +87,9 @@ if (isset($_GET['idp'])) {
 
 <form action="ajouterSignature.php" method="POST">
     <h2>Signer la pétition</h2>
-
+<div id="top">
+    <span id="top5Petition">Chargement...</span>
+</div>
     <div class="petition-info">
         <p><strong>Titre :</strong> <?= htmlspecialchars($petition['TitreP']); ?></p>
         <p><strong>Description :</strong> <?= htmlspecialchars($petition['DescriptionP']); ?></p>
@@ -112,3 +114,24 @@ if (isset($_GET['idp'])) {
 
 </body>
 </html>
+
+<script>
+
+    function RecupText() {
+        objetXHR = new XMLHttpRequest();
+        objetXHR.open("get","dernieres5ajoutee.php", true);
+        objetXHR.onreadystatechange = function() {
+            if (objetXHR.readyState === 4 && objetXHR.status === 200) {
+                let data = JSON.parse(objetXHR.responseText);
+                let html = "";
+                data.forEach(item => {
+                    html += `<p><strong>${item.NomS}</strong>: ${item.EmailS}</p>`;
+                });
+                document.getElementById("top5Petition").innerHTML = html;
+            }
+        };
+        objetXHR.send();
+    }
+    RecupText();
+    setInterval(RecupText,5000);
+</script>

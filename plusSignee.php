@@ -2,7 +2,6 @@
 
 include 'connexion.php';
 
-
     $top = $conn->query("SELECT TitreP, count(*) as nbr,s.IDP
                         FROM petition p natural join signature s GROUP BY s.IDP
                         HAVING nbr >= ALL (SELECT count(*) as nbr
