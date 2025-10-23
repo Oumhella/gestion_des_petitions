@@ -134,17 +134,69 @@ $petitions = $petitions->fetchAll();
 </html>
 <script>
     function updateTop() {
-        fetch('plusSignee.php')
-            .then(r => r.json())
-            .then(data => {
-                if(data && data.TitreP !== undefined){
+        let xhr = new XMLHttpRequest();
+        xhr.open("GET", "plusSignee.php", true);
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                try {
+                    let data = JSON.parse(xhr.responseText);
+                    if (data.TitreP !== undefined) {
                     document.getElementById('topPetition').textContent = data.TitreP + ' : ' + data.nbr+ ' signatures';
                 } else {
                     document.getElementById('topPetition').textContent = 'Aucune pétition';
                 }
-            }).catch(console.error);
+
+                } catch(e) {
+                    console.error("Erreur JSON", e);
+                }
+            }
+        }
+        xhr.send();
     }
     updateTop();
     setInterval(updateTop, 5000);
 
+
+
+    let lastId = 0;
+    let initialised = false;
+
+    if (Notification.permission !== "granted") {
+        Notification.requestPermission();
+    }
+
+    function showNotification(message){
+        if(Notification.permission === "granted"){
+            new Notification(message);
+        }
+    }
+
+    function verifierNouveauRecord() {
+        let xhr = new XMLHttpRequest();
+        xhr.open("GET", "notifNouvellepetition.php", true);
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                try {
+                    let data = JSON.parse(xhr.responseText);
+
+                    if (data.lastId !== undefined) {
+                        if (initialised && data.lastId > lastId) {
+
+                            showNotification("Nouvelle petition ajoutee !");
+                        } else {
+                            console.log("No new petition or first load");
+                        }
+                        lastId = data.lastId;
+                        initialised = true;
+                    }
+                } catch(e) {
+                    console.error("Erreur JSON", e);
+                }
+            }
+        };
+        xhr.send();
+    }
+
+    verifierNouveauRecord();
+    setInterval(verifierNouveauRecord, 5000);
 </script>

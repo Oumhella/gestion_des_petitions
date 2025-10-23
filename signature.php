@@ -1,12 +1,9 @@
 <?php
-// Connexion à la base de données
 include 'connexion.php';
 
-// Récupération de l'ID de la pétition depuis l'URL
 if (isset($_GET['idp'])) {
     $idp = $_GET['idp'];
 
-    // Récupérer les informations de la pétition sélectionnée
     $stmt = $conn->prepare("SELECT * FROM petition WHERE IDP = ?");
     $stmt->execute([$idp]);
     $petition = $stmt->fetch();
