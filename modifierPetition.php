@@ -1,41 +1,45 @@
 <?php
 include 'connexion.php';
 
-// Require login to create petitions
 if(!isLoggedIn()) {
     header("Location: index.php");
     exit();
 }
 
-// Pre-fill data from logged in user
-$defaultNom = $_SESSION['user_prenom'] . ' ' . $_SESSION['user_nom'];
-$defaultEmail = $_SESSION['user_email'];
+if(!isset($_GET['id'])) {
+    header("Location: mesPetitions.php");
+    exit();
+}
 
-// Vérifier si le formulaire a été soumis
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+$petitionId = $_GET['id'];
+$userEmail = $_SESSION['user_email'];
+
+$stmt = $conn->prepare("SELECT * FROM petition WHERE IDP = ? AND Email = ?");
+$stmt->execute([$petitionId, $userEmail]);
+$petition = $stmt->fetch();
+
+if(!$petition) {
+    header("Location: mesPetitions.php");
+    exit();
+}
+
+if($_SERVER['REQUEST_METHOD'] === 'POST') {
     $titre = $_POST['titre'];
     $description = $_POST['description'];
     $dateFin = $_POST['datefin'];
-    $nomPorteur = $_POST['nomporteur'];
-    $email = $_POST['email'];
-    $dateAjout = date('Y-m-d'); // date du jour automatiquement
-
-    // Insertion dans la base de données
-    $stmt = $conn->prepare("INSERT INTO petition (TitreP, DescriptionP, DateAjoutP, DateFinP, NomPorteurP, Email)
-                            VALUES (?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$titre, $description, $dateAjout, $dateFin, $nomPorteur, $email]);
-
-    // Rediriger vers la liste après ajout
-    header("Location: ListePetitions.php");
+    
+    $stmt = $conn->prepare("UPDATE petition SET TitreP = ?, DescriptionP = ?, DateFinP = ? WHERE IDP = ?");
+    $stmt->execute([$titre, $description, $dateFin, $petitionId]);
+    
+    header("Location: mesPetitions.php");
     exit();
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Ajouter une pétition</title>
+    <title>Modifier la pétition</title>
     <style>
         /* Modern beautiful design */
         * {
@@ -146,7 +150,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         input[type="text"],
-        input[type="email"],
         input[type="date"],
         textarea {
             width: 100%;
@@ -159,7 +162,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         input[type="text"]:focus,
-        input[type="email"]:focus,
         input[type="date"]:focus,
         textarea:focus {
             outline: none;
@@ -175,7 +177,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .submit-btn {
-            background: linear-gradient(135deg, #1e88e5, #1565c0);
+            background: linear-gradient(135deg, #17a2b8, #20c997);
             color: white;
             border: none;
             padding: 1rem 2rem;
@@ -189,7 +191,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .submit-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(30, 136, 229, 0.3);
+            box-shadow: 0 8px 25px rgba(23, 162, 184, 0.3);
         }
 
         .back-link {
@@ -237,8 +239,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="nav-links">
             <a href="index.php">Accueil</a>
             <a href="ListePetitions.php">Pétitions</a>
-            <a href="ajouterPetition.php" class="active">Créer</a>
-            <a href="mesPetitions.php">Mes Pétitions</a>
+            <a href="ajouterPetition.php">Créer</a>
+            <a href="mesPetitions.php" class="active">Mes Pétitions</a>
             <span class="user-info"><?php echo htmlspecialchars($_SESSION['user_prenom']); ?></span>
             <a href="logout.php">Déconnexion</a>
         </div>
@@ -248,37 +250,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="container">
     <div class="form-card">
         <form method="POST" action="">
-            <h2>Créer une nouvelle pétition</h2>
+            <h2>Modifier la pétition</h2>
 
             <div class="form-group">
                 <label for="titre">Titre de la pétition</label>
-                <input type="text" id="titre" name="titre" required>
+                <input type="text" id="titre" name="titre" value="<?php echo htmlspecialchars($petition['TitreP']); ?>" required>
             </div>
 
             <div class="form-group">
                 <label for="description">Description</label>
-                <textarea id="description" name="description" required></textarea>
+                <textarea id="description" name="description" required><?php echo htmlspecialchars($petition['DescriptionP']); ?></textarea>
             </div>
 
             <div class="form-group">
                 <label for="datefin">Date de fin</label>
-                <input type="date" id="datefin" name="datefin" required>
+                <input type="date" id="datefin" name="datefin" value="<?php echo htmlspecialchars($petition['DateFinP']); ?>" required>
             </div>
 
-            <div class="form-group">
-                <label for="nomporteur">Nom du porteur</label>
-                <input type="text" id="nomporteur" name="nomporteur" value="<?php echo htmlspecialchars($defaultNom); ?>" required>
-            </div>
-
-            <div class="form-group">
-                <label for="email">Email du porteur</label>
-                <input type="email" id="email" name="email" value="<?php echo htmlspecialchars($defaultEmail); ?>" required>
-            </div>
-
-            <button type="submit" class="submit-btn">Créer la pétition</button>
+            <button type="submit" class="submit-btn">Enregistrer les modifications</button>
         </form>
 
-        <a href="ListePetitions.php" class="back-link">Retour à la liste des pétitions</a>
+        <a href="mesPetitions.php" class="back-link">Retour à mes pétitions</a>
     </div>
 </div>
 

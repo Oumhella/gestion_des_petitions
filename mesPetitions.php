@@ -1,16 +1,24 @@
 <?php
 include 'connexion.php';
 
+// Check if user is logged in
 if(!isLoggedIn()) {
     header("Location: index.php");
     exit();
 }
+
+$userEmail = $_SESSION['user_email'];
+
+// Get user's petitions
+$stmt = $conn->prepare("SELECT * FROM petition WHERE Email = ? ORDER BY DateAjoutP DESC");
+$stmt->execute([$userEmail]);
+$petitions = $stmt->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Liste des pétitions</title>
+    <title>Mes Pétitions</title>
     <style>
         /* Modern beautiful design */
         * {
@@ -86,43 +94,9 @@ if(!isLoggedIn()) {
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1000px;
             margin: 2rem auto;
             padding: 0 2rem;
-        }
-
-        .top-stats {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 1.5rem;
-            border-radius: 15px;
-            margin-bottom: 2rem;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-
-        .top-stats strong {
-            color: #1e88e5;
-            font-size: 1.1rem;
-        }
-
-        .add-btn {
-            background: linear-gradient(135deg, #1e88e5, #1565c0);
-            color: white;
-            border: none;
-            padding: 0.8rem 1.5rem;
-            border-radius: 25px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-            margin-left: 1rem;
-        }
-
-        .add-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(30, 136, 229, 0.3);
         }
 
         h1 {
@@ -177,6 +151,16 @@ if(!isLoggedIn()) {
             text-align: center;
         }
 
+        .signature-count {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
         .petition-actions {
             display: flex;
             gap: 1rem;
@@ -196,23 +180,50 @@ if(!isLoggedIn()) {
             text-align: center;
         }
 
-        .btn-primary {
+        .btn-edit {
+            background: linear-gradient(135deg, #17a2b8, #20c997);
+            color: white;
+        }
+
+        .btn-delete {
+            background: linear-gradient(135deg, #dc3545, #fd7e14);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+
+        .empty-state {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 3rem 2rem;
+            text-align: center;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        }
+
+        .empty-state p {
+            color: #666;
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .empty-state a {
             background: linear-gradient(135deg, #1e88e5, #1565c0);
             color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(30, 136, 229, 0.3);
-        }
-
-        .signature-count {
-            background: linear-gradient(135deg, #28a745, #20c997);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
+            padding: 0.8rem 1.5rem;
+            border-radius: 25px;
+            text-decoration: none;
             font-weight: bold;
-            text-align: center;
+            transition: all 0.3s ease;
+            display: inline-block;
+        }
+
+        .empty-state a:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(30, 136, 229, 0.3);
         }
 
         /* Responsive design */
@@ -247,16 +258,15 @@ if(!isLoggedIn()) {
         }
     </style>
 </head>
-
 <body>
 <div class="header">
     <div class="header-content">
         <a href="index.php" class="logo">Gestion des Pétitions</a>
         <div class="nav-links">
             <a href="index.php">Accueil</a>
-            <a href="ListePetitions.php" class="active">Pétitions</a>
+            <a href="ListePetitions.php">Pétitions</a>
             <a href="ajouterPetition.php">Créer</a>
-            <a href="mesPetitions.php">Mes Pétitions</a>
+            <a href="mesPetitions.php" class="active">Mes Pétitions</a>
             <span class="user-info"><?php echo htmlspecialchars($_SESSION['user_prenom']); ?></span>
             <a href="logout.php">Déconnexion</a>
         </div>
@@ -264,103 +274,32 @@ if(!isLoggedIn()) {
 </div>
 
 <div class="container">
-    <div class="top-stats">
-        <strong>Pétition la plus signée :</strong>
-        <span id="topPetition">Chargement...</span>
-        <a href="ajouterPetition.php" class="add-btn">+ Nouvelle pétition</a>
+    <h1>Mes Pétitions</h1>
+
+    <div id="petitionContainer">
+        <!-- Petitions will load here -->
     </div>
 
-    <h1>Liste des Pétitions</h1>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            function loadPetitions() {
+                const xhr = new XMLHttpRequest();
+                xhr.open("GET", "fetch_Mespetitions.php", true);
+                xhr.onload = function() {
+                    if (xhr.status === 200) {
+                        document.getElementById("petitionContainer").innerHTML = xhr.responseText;
+                    }
+                };
+                xhr.send();
+            }
 
-    <div id="petitionContainer" class="petitions-grid">
-        <!-- Petitions via AJAX -->
-    </div>
+            loadPetitions();
+
+            setInterval(loadPetitions, 5000);
+        });
+    </script>
+
 </div>
 
 </body>
 </html>
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-
-        function loadPetitions() {
-            const xhr = new XMLHttpRequest();
-            xhr.open("GET", "fetch_petitions.php", true);
-            xhr.onload = function () {
-                if (xhr.status === 200) {
-                    document.getElementById("petitionContainer").innerHTML = xhr.responseText;
-                }
-            };
-            xhr.send();
-        }
-
-        loadPetitions();
-
-        setInterval(loadPetitions, 5000);
-
-
-        function updateTop() {
-            const xhr = new XMLHttpRequest();
-            xhr.open("GET", "plusSignee.php", true);
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4 && xhr.status === 200) {
-                    try {
-                        const data = JSON.parse(xhr.responseText);
-                        if (data.TitreP !== undefined) {
-                            document.getElementById('topPetition').textContent =
-                                data.TitreP + ' : ' + data.nbr + ' signatures';
-                        } else {
-                            document.getElementById('topPetition').textContent = 'Aucune pétition';
-                        }
-                    } catch(e) {
-                        console.error("Erreur JSON", e);
-                    }
-                }
-            };
-            xhr.send();
-        }
-
-        updateTop();
-        setInterval(updateTop, 5000);
-
-
-        let lastId = 0;
-        let initialised = false;
-
-        if (Notification.permission !== "granted") {
-            Notification.requestPermission();
-        }
-
-        function showNotification(message) {
-            if (Notification.permission === "granted") {
-                new Notification(message);
-            }
-        }
-
-        function verifierNouveauRecord() {
-            const xhr = new XMLHttpRequest();
-            xhr.open("GET", "notifNouvellepetition.php", true);
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4 && xhr.status === 200) {
-                    try {
-                        const data = JSON.parse(xhr.responseText);
-                        if (data.lastId !== undefined) {
-                            if (initialised && data.lastId > lastId) {
-                                showNotification("Nouvelle pétition ajoutée !");
-                                loadPetitions();
-                                updateTop();
-                            }
-                            lastId = data.lastId;
-                            initialised = true;
-                        }
-                    } catch(e) {
-                        console.error("Erreur JSON", e);
-                    }
-                }
-            };
-            xhr.send();
-        }
-
-        verifierNouveauRecord();
-        setInterval(verifierNouveauRecord, 5000);
-    });
-</script>
